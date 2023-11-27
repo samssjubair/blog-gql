@@ -1,9 +1,7 @@
+import bcrypt from "bcrypt";
 
-import  bcrypt  from 'bcrypt';
-
-import { jwtHelper } from '../../utils/jwtHelpers';
-import config from '../../config';
-
+import { jwtHelper } from "../../utils/jwtHelpers";
+import config from "../../config";
 
 interface userInfo {
   name: string;
@@ -13,7 +11,7 @@ interface userInfo {
 }
 
 export const Mutation = {
-  signup: async (parent: any, args: userInfo, {prisma}: any) => {
+  signup: async (parent: any, args: userInfo, { prisma }: any) => {
     const isExist = await prisma.user.findFirst({
       where: {
         email: args.email,
@@ -43,7 +41,7 @@ export const Mutation = {
       });
     }
 
-    const token = await jwtHelper(
+    const token = await jwtHelper.generateToken(
       { userId: user.id },
       config.jwt.secret as string
     );
@@ -52,7 +50,7 @@ export const Mutation = {
       userError: "null",
     };
   },
-  signin: async (parent: any, args: userInfo, {prisma}: any) => {
+  signin: async (parent: any, args: userInfo, { prisma }: any) => {
     const user = await prisma.user.findFirst({
       where: {
         email: args.email,
@@ -71,10 +69,39 @@ export const Mutation = {
         token: "null",
       };
     }
-    const token = jwtHelper({ userId: user.id }, config.jwt.secret as string);
+    const token = jwtHelper.generateToken(
+      { userId: user.id },
+      config.jwt.secret as string
+    );
     return {
       userError: "null",
       token,
+    };
+  },
+  addPost: async (parent: any, args: any, { prisma, userInfo }: any) => {
+    console.log(userInfo);
+    if (!userInfo) {
+      return {
+        userError: "Not authenticated",
+        post: null,
+      };
+    }
+    if(!args.title || !args.content){
+        return {
+            userError: "Title and content is required",
+            post: null,
+        };
+    }
+    const post = await prisma.post.create({
+      data: {
+        title: args.title,
+        content: args.content,
+        authorId: userInfo.userId
+      },
+    });
+    return {
+      userError: "null",
+      post,
     };
   },
 };
